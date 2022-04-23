@@ -316,6 +316,7 @@ class InteractiveMap {
 				
 				let landmark = {
 					pos: ol.proj.fromLonLat(data.geometry.coordinates),
+					isRefreshPoint: true,
 					src: landmark_set
 				}
 				

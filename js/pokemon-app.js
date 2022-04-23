@@ -5,6 +5,7 @@ const NU_CENTER = ol.proj.fromLonLat([-87.6753, 42.056])
 // const NU_CENTER = ol.proj.fromLonLat([-87.6813, 42.049])
 const AUTOMOVE_SPEED = 1
 const UPDATE_RATE = 100
+const MAX_ENERGY = 1;
 /*
  Apps are made out of a header (title/controls) and footer
  and some number of columns
@@ -16,6 +17,7 @@ let landmarkCount = 0
 
 let gameState = {
 	points: 0,
+	energy: MAX_ENERGY,
 	captured: [],
 	messages: []
 }
@@ -41,6 +43,26 @@ let map = new InteractiveMap({
 			// return landmark.properties.amenity || landmark.properties.store
 		})
 
+		this.loadLandmarks("landmarks-shop-nu", (landmark) => {
+			// Keep this landmark?
+
+			// Keep all landmarks in the set
+			return true
+
+			// Only keep this landmark if its a store or amenity, e.g.
+			// return landmark.properties.amenity || landmark.properties.store
+		})
+
+		this.loadLandmarks("landmarks-natural-nu", (landmark) => {
+			// Keep this landmark?
+
+			// Keep all landmarks in the set
+			return true
+
+			// Only keep this landmark if its a store or amenity, e.g.
+			// return landmark.properties.amenity || landmark.properties.store
+		})
+
 		// Create random landmarks
 		// You can also use this to create trails or clusters for the user to find
 		for (var i = 0; i < 10; i++) {
@@ -50,6 +72,7 @@ let map = new InteractiveMap({
 			let position = clonePolarOffset(NU_CENTER, 400*Math.random() + 300, 20*Math.random())
 			this.createLandmark({
 				pos: position,
+				isRefreshPoint: false,
 				name: words.getRandomWord(),
 			})
 		}
@@ -66,6 +89,10 @@ let map = new InteractiveMap({
 		if (landmark.openMapData) {
 			console.log(landmark.openMapData)
 			landmark.name = landmark.openMapData.name
+			if (typeof landmark.name === 'undefined')
+			{
+				landmark.name = "Nature"
+			}
 		}
 		
 		// *You* decide how to create a marker
@@ -84,19 +111,29 @@ let map = new InteractiveMap({
 
 		console.log("enter", landmark.name, newLevel)
 		if (newLevel == 2) {
-
-			// Add points to my gamestate
-			gameState.points += landmark.points
-
-			
-
-			// Have we captured this?
-			if (!gameState.captured.includes(landmark.name)) {
-				gameState.captured.push(landmark.name)
-				// Add a message
-				gameState.messages.push(`You captured ${landmark.name} for ${landmark.points} points`)
+			if (landmark.isRefreshPoint)
+			{
+				var energyRestored = MAX_ENERGY - gameState.energy;
+				gameState.energy += energyRestored;
+				gameState.messages.push(`You visited a refresh point and restored ${energyRestored} energy! Time to capture some creatures!`)
 			}
-
+			else if (gameState.energy > 0)
+			{
+				// Have we captured this?
+				if (!gameState.captured.includes(landmark.name)) {
+					// Add points to my gamestate
+					gameState.points += landmark.points
+					gameState.energy -= 1;
+					gameState.captured.push(landmark.name)
+					// Add a message
+					gameState.messages.push(`You captured ${landmark.name} for ${landmark.points} points!`)
+					map.markerLayer.getSource().removeFeature(landmark.marker);
+				}
+			}
+			else if (!gameState.captured.includes(landmark.name))
+			{
+				gameState.messages.push(`You are too tired to capture ${landmark.name}! Try visiting a refresh point!`)
+			}
 		}
 	},
 
@@ -126,7 +163,7 @@ let map = new InteractiveMap({
 			fontSize: 8,
 
 			// Icons (in icon folder)
-			icon: "person_pin_circle",
+			icon: landmark.isRefreshPoint ? "stars" : "pets",
 
 			// Colors are in HSL (hue, saturation, lightness)
 			iconColor: [hue, 1, .5],
@@ -150,7 +187,6 @@ window.onload = (event) => {
 			<div id="main-columns">
 
 				<div class="main-column" style="flex:1;overflow:scroll;max-height:200px">
-					(TODO, add your own gamestate)
 					{{gameState}}
 					
 				</div>
